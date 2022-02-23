@@ -1,6 +1,15 @@
+use std::env;
 
 mod cpu;
 mod parser;
+
+use cpu::common::SingleCycleCPU;
 fn main() {
-    println!("Hello, world!");
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        panic!("[Error] Please input file");
+    }
+    let input_file = args[1].clone();
+    let mut cpu = SingleCycleCPU::new();
+    cpu.read_inst(input_file).unwrap();
 }
