@@ -1,3 +1,6 @@
+
+mod common;
+mod tomasulo;
 /// CPU 的 Trait
 pub trait CpuExecute{
     fn execute(&self);
