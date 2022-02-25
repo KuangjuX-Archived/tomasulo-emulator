@@ -12,8 +12,8 @@ pub fn parse<S>(inst: S) -> Instruction
             let cap = pattern.captures(&inst).unwrap();
             Instruction::Ld(
                 Operand::new(
-                    cap[1].parse::<usize>().unwrap(), 
-                    usize::from_str_radix(&cap[2], 16).unwrap(), 
+                    isize::from_str_radix(&cap[1], 10).unwrap(), 
+                    isize::from_str_radix(&cap[2], 16).unwrap(), 
                     0
                 )
             )
@@ -24,9 +24,9 @@ pub fn parse<S>(inst: S) -> Instruction
             let cap = pattern.captures(&inst).unwrap();
             Instruction::Add(
                 Operand::new(
-                    usize::from_str_radix(&cap[1], 10).unwrap(),
-                    usize::from_str_radix(&cap[2], 10).unwrap(), 
-                    usize::from_str_radix(&cap[3], 10).unwrap()
+                    isize::from_str_radix(&cap[1], 10).unwrap(),
+                    isize::from_str_radix(&cap[2], 10).unwrap(), 
+                    isize::from_str_radix(&cap[3], 10).unwrap()
                 )
             )
         },
@@ -36,9 +36,9 @@ pub fn parse<S>(inst: S) -> Instruction
             let cap = pattern.captures(&inst).unwrap();
             Instruction::Sub(
                 Operand::new(
-                    usize::from_str_radix(&cap[1], 10).unwrap(),
-                    usize::from_str_radix(&cap[2], 10).unwrap(), 
-                    usize::from_str_radix(&cap[3], 10).unwrap()
+                    isize::from_str_radix(&cap[1], 10).unwrap(),
+                    isize::from_str_radix(&cap[2], 10).unwrap(), 
+                    isize::from_str_radix(&cap[3], 10).unwrap()
                 )
             )
         },
@@ -48,9 +48,9 @@ pub fn parse<S>(inst: S) -> Instruction
             let cap = pattern.captures(&inst).unwrap();
             Instruction::Mul(
                 Operand::new(
-                    usize::from_str_radix(&cap[1], 10).unwrap(),
-                    usize::from_str_radix(&cap[2], 10).unwrap(), 
-                    usize::from_str_radix(&cap[3], 10).unwrap()
+                    isize::from_str_radix(&cap[1], 10).unwrap(),
+                    isize::from_str_radix(&cap[2], 10).unwrap(), 
+                    isize::from_str_radix(&cap[3], 10).unwrap()
                 )
             )
         }
@@ -60,9 +60,9 @@ pub fn parse<S>(inst: S) -> Instruction
             let cap = pattern.captures(&inst).unwrap();
             Instruction::Div(
                 Operand::new(
-                    usize::from_str_radix(&cap[1], 10).unwrap(),
-                    usize::from_str_radix(&cap[2], 10).unwrap(), 
-                    usize::from_str_radix(&cap[3], 10).unwrap()
+                    isize::from_str_radix(&cap[1], 10).unwrap(),
+                    isize::from_str_radix(&cap[2], 10).unwrap(), 
+                    isize::from_str_radix(&cap[3], 10).unwrap()
                 )
             )
         }

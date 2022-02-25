@@ -9,13 +9,13 @@ pub trait Cpu{
 /// 操作数
 #[derive(Debug)]
 pub struct Operand {
-    target: usize,
-    operand1: usize,
-    operand2: usize
+    target: isize,
+    operand1: isize,
+    operand2: isize
 }
 
 impl Operand {
-    pub fn new(target: usize, operand1: usize, operand2: usize) -> Self {
+    pub fn new(target: isize, operand1: isize, operand2: isize) -> Self {
         Self{
             target,
             operand1,
