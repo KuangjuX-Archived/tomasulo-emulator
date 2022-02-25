@@ -2,11 +2,12 @@
 pub mod common;
 pub mod tomasulo;
 /// CPU 的 Trait
-pub trait CpuExecute{
-    fn execute(&self, instruction: Instruction);
+pub trait Cpu{
+    fn execute(&mut self);
 }
 
 /// 操作数
+#[derive(Debug)]
 pub struct Operand {
     target: usize,
     operand1: usize,
@@ -23,11 +24,13 @@ impl Operand {
     }
 }
 /// 指令类型
+#[derive(Debug)]
 pub enum Instruction{
     Add(Operand),
     Sub(Operand),
     Mul(Operand),
     Div(Operand),
-    Ld(Operand)
+    Ld(Operand),
+    Invalid
 }
 
