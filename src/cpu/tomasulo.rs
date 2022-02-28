@@ -145,10 +145,11 @@ impl TomasuloCpu {
         }
     } 
 
-    fn update_op(&mut self, reg_index: usize, rs: usize, rob: usize) {
+    /// 发射操作数，即将操作数写入到保留站中
+    fn issue_op(&mut self, reg_index: usize, rs: usize) {
         let reg_stat = &mut self.reg_stat;
         let rs = &mut self.rs[rs];
-        let rob = &mut self.rob[rob];
+        // let rob = &mut self.rob[rob];
         // 如果操作数的目前的状态是 busy 表示当前操作数不在寄存器中
         // 而将要被前面的指令写回或者在 ROB 中
         if reg_stat[reg_index].busy  {
@@ -198,8 +199,14 @@ impl TomasuloCpu {
                             // let rob = &mut self.rob[rob];
                             let r1 = op.operand1 as usize;
                             let r2 = op.operand2 as usize;
-                            self.update_op(r1, rs, rob);
-                            self.update_op(r2, rs, rob)
+                            let rd = op.target as usize;
+                            // 发射操作数
+                            self.issue_op(r1, rs);
+                            self.issue_op(r2, rs);
+
+                            self.reg_stat[rd].reorder = Some(rob);
+                            self.reg_stat[rd].busy = true;
+                            self.rob[rob].inner.dest = Some(rd);
                         },
 
                         _ => {}
