@@ -1,8 +1,8 @@
-
 pub mod common;
 pub mod tomasulo;
 pub use common::SingleCycleCpu;
-pub use tomasulo::TomasuloCpu;
+pub use tomasulo::{ TomasuloCpu, ResStationType };
+
 /// CPU 的 Trait
 pub trait Cpu{
     fn execute(&mut self);
@@ -10,7 +10,7 @@ pub trait Cpu{
 }
 
 /// 操作数
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Operand {
     target: isize,
     operand1: isize,
@@ -27,7 +27,7 @@ impl Operand {
     }
 }
 /// 指令类型
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Instruction{
     Add(Operand),
     Sub(Operand),
@@ -36,4 +36,5 @@ pub enum Instruction{
     Ld(Operand),
     Invalid
 }
+
 
