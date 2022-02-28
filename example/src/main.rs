@@ -1,5 +1,6 @@
 use std::env;
 use tomasulo_emulator::cpu::{ SingleCycleCpu, Cpu };
+use tomasulo_emulator::parser::Parser;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -7,7 +8,8 @@ fn main() {
         panic!("[Error] Please input file");
     }
     let input_file = args[1].clone();
+    let parser = Parser::new();
     let mut cpu = SingleCycleCpu::new();
-    cpu.read_inst(input_file).unwrap();
+    parser.read_inst(&mut cpu, input_file).unwrap();
     cpu.execute();
 }

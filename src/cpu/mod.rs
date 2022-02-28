@@ -6,6 +6,7 @@ pub use tomasulo::TomasuloCpu;
 /// CPU 的 Trait
 pub trait Cpu{
     fn execute(&mut self);
+    fn add_inst(&mut self, inst: Instruction);
 }
 
 /// 操作数
