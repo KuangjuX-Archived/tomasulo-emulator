@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::collections::VecDeque;
 use std::io::Read;
-use super::{ Instruction, Cpu};
+use super::{ Instruction, Cpu };
 use crate::parser::parse;
 
 /// 单周期执行的 CPU
