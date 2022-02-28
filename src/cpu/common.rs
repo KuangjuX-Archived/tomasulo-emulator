@@ -5,12 +5,12 @@ use super::{ Instruction, Cpu};
 use crate::parser::parse;
 
 /// 单周期执行的 CPU
-pub struct SingleCycleCPU {
+pub struct SingleCycleCpu {
     pub(crate) regs: [isize;32],
     pub(crate) instruction_queue: VecDeque<Instruction>
 }
 
-impl Cpu for SingleCycleCPU {
+impl Cpu for SingleCycleCpu {
     fn execute(&mut self) {
         println!("Start execute instructions!");
         loop {
@@ -29,7 +29,7 @@ impl Cpu for SingleCycleCPU {
     }
 }
 
-impl SingleCycleCPU {
+impl SingleCycleCpu {
     pub fn new() -> Self {
         Self{
             regs: [0isize;32],

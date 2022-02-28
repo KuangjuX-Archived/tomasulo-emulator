@@ -1,6 +1,8 @@
 
 pub mod common;
 pub mod tomasulo;
+pub use common::SingleCycleCpu;
+pub use tomasulo::TomasuloCpu;
 /// CPU 的 Trait
 pub trait Cpu{
     fn execute(&mut self);
