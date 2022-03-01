@@ -195,8 +195,6 @@ impl TomasuloCpu {
                 ResStationType::AddSub | ResStationType::MulDiv => {
                     match inst {
                         Instruction::Add(op) | Instruction::Sub(op) | Instruction::Mul(op) | Instruction::Div(op) => {
-                            // let rs = &mut self.rs[rs];
-                            // let rob = &mut self.rob[rob];
                             let r1 = op.operand1 as usize;
                             let r2 = op.operand2 as usize;
                             let rd = op.target as usize;
@@ -213,7 +211,15 @@ impl TomasuloCpu {
                     }
                 },
                 ResStationType::LoadBuffer => {
+                    match inst {
+                        Instruction::Ld(op) => {
 
+                        },
+                        Instruction::Sd(op) => {
+
+                        },
+                        _ => {}
+                    }
                 }
             }
         }
