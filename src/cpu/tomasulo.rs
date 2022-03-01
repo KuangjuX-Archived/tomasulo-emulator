@@ -1,6 +1,11 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, iter::Inspect};
 use std::convert::From;
-use super::{ Instruction, Operand, Cpu };
+use super::{ Instruction, Cpu };
+
+pub const ADD_CYCLES: usize = 1;
+pub const SUB_CYCLES: usize = 1;
+pub const MUL_CYCLES: usize = 6;
+pub const DIV_CYCLES: usize = 12;
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum ResStationType {
@@ -34,7 +39,7 @@ pub struct ResStationInner {
     /// 内存地址，仅 store 和 load 使用
     address: Option<usize>,
     /// 指令类型
-    operand: Option<Operand>,
+    inst: Option<Instruction>,
     /// Qj
     rs_index: Option<usize>,
     /// Qk
@@ -69,6 +74,8 @@ pub struct RegisterStatus {
 }
 
 pub struct ExecUint {
+    busy: bool,
+    rs_type: ResStationType,
     cycles: usize
 }
 
@@ -86,7 +93,9 @@ pub struct TomasuloCpu {
     /// 保留站
     rs: Vec<ReservedStation>,
     /// ROB
-    rob: Vec<ReorderBuffer>
+    rob: Vec<ReorderBuffer>,
+    /// 执行单元
+    exec_units: Vec<ExecUint>
 }
 
 
@@ -109,7 +118,8 @@ impl TomasuloCpu {
             regs: [0isize;32],
             instruction_queue: VecDeque::new(),
             rs: vec![],
-            rob: vec![]
+            rob: vec![],
+            exec_units: vec![]
         };
         // 为 CPU 添加保留站
         cpu.add_rs(ResStationType::AddSub, 3);
@@ -117,6 +127,10 @@ impl TomasuloCpu {
         cpu.add_rs(ResStationType::LoadBuffer, 2);
         // 为 CPU 添加 ROB
         cpu.add_rob(6);
+        // 为 CPU 添加执行单元
+        cpu.add_exec_unit(ResStationType::AddSub, 3);
+        cpu.add_exec_unit(ResStationType::MulDiv, 2);
+        cpu.add_exec_unit(ResStationType::LoadBuffer, 2);
         cpu
     }
 
@@ -129,7 +143,7 @@ impl TomasuloCpu {
                     busy: false,
                     inner: ResStationInner{
                         address: None,
-                        operand: None,
+                        inst: None,
                         rs_index: None,
                         rs_value: None,
                         rt_index: None,
@@ -155,8 +169,29 @@ impl TomasuloCpu {
         }
     } 
 
-    pub fn find_reorder(&self, addr: usize) -> Option<usize> {
+    /// 添加执行单元
+    fn add_exec_unit(&mut self, rs_type: ResStationType, count: usize) {
+        for _ in 0..count {
+            self.exec_units.push(ExecUint {
+                busy: false,
+                rs_type: rs_type,
+                cycles: 0
+            });
+        }
+    }
+
+    fn find_reorder(&self, addr: usize) -> Option<usize> {
         self.rob.iter().position(|item| item as *const _ as usize == addr) 
+    }
+
+    /// 发现空闲的执行单元
+    fn find_empty_exec_unit(&self, rs_type: ResStationType) -> Option<usize> {
+        for i in 0..self.exec_units.len() {
+            if !self.exec_units[i].busy && self.exec_units[i].rs_type == rs_type {
+                return Some(i)
+            }
+        }
+        None
     }
 
     /// 发射操作数，即将操作数写入到保留站中
@@ -244,14 +279,26 @@ impl TomasuloCpu {
     /// 执行指令
     pub(crate) fn exec(&mut self) {
         // 遍历保留站检查有哪些写指令可以开始执行
-        for rs in self.rs.iter_mut() {
+        for rs in self.rs.iter() {
             if rs.inner.rs_index.is_none() && rs.inner.rt_index.is_none() {
-                
+                let inst = rs.inner.inst.unwrap();
+                let rs_type: ResStationType = inst.into();
+                if let Some(index) = self.find_empty_exec_unit(rs_type) {
+                    self.exec_units[index].busy = true;
+                    match inst {
+                        Instruction::Add(_) => { self.exec_units[index].cycles = ADD_CYCLES },
+                        Instruction::Sub(_) => { self.exec_units[index].cycles = SUB_CYCLES },
+                        Instruction::Mul(_) => { self.exec_units[index].cycles = MUL_CYCLES },
+                        Instruction::Div(_) => { self.exec_units[index].cycles = DIV_CYCLES },
+                        _ => {}
+                    }
+                    self.cycles -= 1;
+                }
             }
         }
     }
 
-    /// 写结果并将其送到 CDB 总线上
+    /// 将结果写到 CDB 总线并进行广播
     pub(crate) fn write_result(&mut self) {
 
     }
@@ -285,6 +332,8 @@ impl TomasuloCpu {
         }
     }
 
+    /// 在一周期内所执行的操作
+    /// 包括发射、执行、写结果、提交
     pub(crate) fn single_cycle(&mut self) {
         // 将周期添加 1
         self.cycles += 1;
@@ -292,6 +341,8 @@ impl TomasuloCpu {
         self.issue();
         // 检查保留站开始执行指令
         self.exec();
+        // 将结果写到 CDB 总线并进行广播
+        self.write_result();
         // 进行指令提交
         self.commit();
     }
