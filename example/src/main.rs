@@ -2,6 +2,7 @@ use std::env;
 use tomasulo_emulator::cpu::{ SingleCycleCpu, Cpu };
 use tomasulo_emulator::parser::Parser;
 
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
