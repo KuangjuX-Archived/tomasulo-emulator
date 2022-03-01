@@ -195,6 +195,7 @@ impl TomasuloCpu {
     }
 
     /// 发射操作数，即将操作数写入到保留站中
+    /// TODO: rs_index, rt_index
     fn issue_op(&mut self, reg_index: usize, rs: usize) {
         let reg_stat = &mut self.reg_stat;
         // 如果操作数的目前的状态是 busy 表示当前操作数不在寄存器中
@@ -293,6 +294,8 @@ impl TomasuloCpu {
                         _ => {}
                     }
                     self.cycles -= 1;
+                }else{
+                    println!("[Debug] No ExecUnit to execute instruction");
                 }
             }
         }
