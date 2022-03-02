@@ -29,6 +29,7 @@ impl From<Instruction> for ResStationType {
 }
 
 /// 保留站
+#[derive(Debug)]
 pub struct ReservedStation {
     /// 保留站类型
     rs_type: ResStationType,
@@ -41,6 +42,7 @@ pub struct ReservedStation {
     
 }
 
+#[derive(Debug)]
 pub struct ResStationInner {
     /// 内存地址，仅 store 和 load 使用
     address: Option<usize>,
@@ -303,6 +305,7 @@ impl TomasuloCpu {
         if let Some(inst) = self.instruction_queue.pop_front() {
             let rs_type: ResStationType = inst.into();
             if let Some((rs, rob)) = self.can_issue(rs_type) {
+                println!("[Debug] issue: rs: {}, rob: {}", rs, rob);
                 match rs_type {
                     // 浮点数运算操作
                     ResStationType::AddSub | ResStationType::MulDiv => {
@@ -358,9 +361,12 @@ impl TomasuloCpu {
     pub(crate) fn exec(&mut self) {
         // 遍历保留站检查有哪些写指令可以开始执行
         for rs_index in 0..self.rs.len() {
+            // if self.cycles == 2 {
+            //     println!("[Debug] rs: {:?}", self.rs[0]);
+            // }
             if self.rs[rs_index].inner.rs_index.is_none() && self.rs[rs_index].inner.rt_index.is_none() && self.rs[rs_index].busy && !self.rs[rs_index].exec {
                 self.rs[rs_index].exec = true;
-                // println!("[Debug] rs_index: {}, cycles: {}", rs_index, self.cycles);
+                println!("[Debug] exec: rs_index: {}, cycles: {}", rs_index, self.cycles);
                 let inst = self.rs[rs_index].inner.inst.unwrap();
                 let rs_type: ResStationType = inst.into();
                 if let Some(exec_unit_index) = self.find_empty_exec_unit(rs_type) {
@@ -421,6 +427,7 @@ impl TomasuloCpu {
                 }
                 
                 res_station.busy = false;
+                res_station.exec = false;
                 // 获取到 reorder 的地址
                 let dest = res_station.inner.dest.unwrap();
                 // 获取到 reorder 的地址
@@ -438,7 +445,7 @@ impl TomasuloCpu {
                     }
                 }
                 // 将 ROB ready 设置为 true，表示可以进行提交了
-                println!("[Debug] rob_index: {}", rob_index);
+                // println!("[Debug] rob_index: {}", rob_index);
                 self.rob[rob_index].ready = true;
                 self.rob[rob_index].inner.value = Some(res);
                 // 将执行单元设置为空闲
