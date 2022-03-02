@@ -51,12 +51,15 @@ pub struct ResStationInner {
 }
 
 /// ROB
+#[derive(Debug)]
 pub struct ReorderBuffer {
     busy: bool,
     ready: bool,
     inner: ROBInner
 }
 
+
+#[derive(Debug)]
 pub struct ROBInner {   
     inst: Option<Instruction>,
     dest: Option<usize>,
@@ -140,8 +143,18 @@ impl TomasuloCpu {
         cpu
     }
 
+    pub fn set_regs(&mut self, index: usize, number: isize) {
+        self.regs[index] = number;
+    }
+
     pub fn done(&self) -> bool {
         self.done
+    }
+
+    fn debug_rob(&self) {
+        for i in 0..self.rob.len() {
+            println!("index: {}, rob: {:?}", i, self.rob[i]);
+        }
     }
 
     /// 添加保留站
@@ -206,32 +219,50 @@ impl TomasuloCpu {
     }
 
     // /// 发射操作数，即将操作数写入到保留站中
-    // /// TODO: rs_index, rt_index
-    // fn issue_op(&mut self, reg_index: usize, rs: usize) {
-    //     let reg_stat = &mut self.reg_stat;
-    //     // 如果操作数的目前的状态是 busy 表示当前操作数不在寄存器中
-    //     // 而将要被前面的指令写回或者在 ROB 中
-    //     if reg_stat[reg_index].busy  {
-    //         // 获取 reorder_addr 地址的值
-    //         let reorder_addr = reg_stat[reg_index].reorder.unwrap();
-    //         let reorder_index = self.find_reorder(reorder_addr).unwrap();
-    //         let rs = &mut self.rs[rs];
-    //         if self.rob[reorder_index].ready {
-    //             // 在 ROB 中已经将该寄存器的值计算完成，但仍然没有 commit
-    //             // 此时直接进行赋值即可
-    //             rs.inner.rs_value = Some(self.rob[reorder_index].inner.value.unwrap());
-    //             rs.inner.rs_index = None;
-    //         }else{
-    //             // 此时在 ROB 仍然没有计算完, 记录为 ROB 的序号
-    //             rs.inner.rs_index = Some(reorder_addr);
-    //         }
-    //     }else{
-    //         let rs = &mut self.rs[rs];
-    //         // 目前操作数在寄存器堆中
-    //         rs.inner.rs_value = Some(reg_stat[reg_index].reorder).unwrap();
-    //         rs.inner.rs_index = None;
-    //     }
-    // }
+    fn issue_op(&mut self, reg_index: usize, rs: usize, op: usize) {
+        // 发射操作数
+        let reg_stat = &self.reg_stat;
+        // 如果操作数 1 的目前的状态是 busy 表示当前操作数不在寄存器中
+        // 而将要被前面的指令写回或者在 ROB 中
+        if reg_stat[reg_index].busy  {
+            // 获取 reorder_addr 地址的值
+            let reorder_addr = reg_stat[reg_index].reorder.unwrap();
+            println!("[Debug] reorder_addr: {:#x}", reorder_addr);
+            let reorder_index = self.find_reorder(reorder_addr).unwrap();
+            let rs = &mut self.rs[rs];
+            if self.rob[reorder_index].ready {
+                // 在 ROB 中已经将该寄存器的值计算完成，但仍然没有 commit
+                // 此时直接进行赋值即可
+                if op == 1 {
+                    rs.inner.rs_value = Some(self.rob[reorder_index].inner.value.unwrap());
+                    rs.inner.rs_index = None;
+                }else if op == 2 {
+                    rs.inner.rt_value= Some(self.rob[reorder_index].inner.value.unwrap());
+                    rs.inner.rt_index = None;
+                }
+            }else{
+                // 此时在 ROB 仍然没有计算完, 记录为 ROB 的序号
+                if op == 1 {
+                    rs.inner.rs_index = Some(reorder_addr);
+                }else if op == 2 {
+                    rs.inner.rt_index = Some(reorder_addr);
+                }
+            }
+            rs.busy = true;
+        }else{
+            let rs = &mut self.rs[rs];
+            // 目前操作数在寄存器堆中
+            rs.busy = true;
+            if op == 1 {
+                rs.inner.rs_value = Some(self.regs[reg_index] as usize);
+                rs.inner.rs_index = None;
+            }else if op == 2 {
+                rs.inner.rt_value = Some(self.regs[reg_index] as usize);
+                rs.inner.rt_index = None;
+            }
+            println!("[Debug] reg{}: {}", reg_index, self.regs[reg_index]);
+        }
+    }
 
     /// 查看是否能发射
     fn can_issue(&self, rs_type: ResStationType) -> Option<(usize, usize)> {
@@ -263,57 +294,18 @@ impl TomasuloCpu {
                                 let rd = op.target as usize;
 
                                 // 发射操作数
-                                let reg_stat = &self.reg_stat;
-                                // 如果操作数 1 的目前的状态是 busy 表示当前操作数不在寄存器中
-                                // 而将要被前面的指令写回或者在 ROB 中
-                                if reg_stat[r1].busy  {
-                                    // 获取 reorder_addr 地址的值
-                                    let reorder_addr = reg_stat[r1].reorder.unwrap();
-                                    let reorder_index = self.find_reorder(reorder_addr).unwrap();
-                                    let rs = &mut self.rs[rs];
-                                    if self.rob[reorder_index].ready {
-                                        // 在 ROB 中已经将该寄存器的值计算完成，但仍然没有 commit
-                                        // 此时直接进行赋值即可
-                                        rs.inner.rs_value = Some(self.rob[reorder_index].inner.value.unwrap());
-                                        rs.inner.rs_index = None;
-                                    }else{
-                                        // 此时在 ROB 仍然没有计算完, 记录为 ROB 的序号
-                                        rs.inner.rs_index = Some(reorder_addr);
-                                    }
-                                }else{
-                                    let rs = &mut self.rs[rs];
-                                    // 目前操作数在寄存器堆中
-                                    rs.inner.rs_value = Some(reg_stat[r1].reorder).unwrap();
-                                    rs.inner.rs_index = None;
-                                }
-
-                                // 如果操作数 2 的目前的状态是 busy 表示当前操作数不在寄存器中
-                                // 而将要被前面的指令写回或者在 ROB 中
-                                if reg_stat[r2].busy  {
-                                    // 获取 reorder_addr 地址的值
-                                    let reorder_addr = reg_stat[r2].reorder.unwrap();
-                                    let reorder_index = self.find_reorder(reorder_addr).unwrap();
-                                    let rs = &mut self.rs[rs];
-                                    if self.rob[reorder_index].ready {
-                                        // 在 ROB 中已经将该寄存器的值计算完成，但仍然没有 commit
-                                        // 此时直接进行赋值即可
-                                        rs.inner.rt_value = Some(self.rob[reorder_index].inner.value.unwrap());
-                                        rs.inner.rt_index = None;
-                                    }else{
-                                        // 此时在 ROB 仍然没有计算完, 记录为 ROB 的序号
-                                        rs.inner.rt_index = Some(reorder_addr);
-                                    }
-                                }else{
-                                    let rs = &mut self.rs[rs];
-                                    // 目前操作数在寄存器堆中
-                                    rs.inner.rt_value = Some(reg_stat[r2].reorder).unwrap();
-                                    rs.inner.rt_index = None;
-                                }
-
+                                self.issue_op(r1, rs, 1);
+                                self.issue_op(r2, rs, 2);
+                                
+                                let rs = &mut self.rs[rs];
+                                rs.inner.inst = Some(inst);
                                 // 设置目标寄存器状态
-                                self.reg_stat[rd].reorder = Some(rob);
+                                self.reg_stat[rd].reorder = Some(&self.rob[rob] as *const _ as usize);
                                 self.reg_stat[rd].busy = true;
                                 self.rob[rob].inner.dest = Some(rd);
+                                self.rob[rob].busy = true;
+                                self.rob[rob].ready = false;
+                                self.rob[rob].inner.inst = Some(inst);
                             },
 
                             _ => {}
@@ -332,9 +324,7 @@ impl TomasuloCpu {
                     }
                 }
             }
-        }else{
-            self.done = true;
-        }      
+        }   
     }
 
     /// 执行指令
@@ -365,7 +355,7 @@ impl TomasuloCpu {
     /// 将结果写到 CDB 总线并进行广播
     pub(crate) fn write_result(&mut self) {
         for i in 0..self.exec_units.len() {
-            if self.exec_units[i].busy {
+            if self.exec_units[i].busy && self.exec_units[i].cycles > 0{
                 self.exec_units[i].cycles -= 1;
             }
             if self.exec_units[i].cycles == 0 && self.exec_units[i].busy {
@@ -413,30 +403,36 @@ impl TomasuloCpu {
     /// 提交指令
     pub(crate) fn commit(&mut self) {
         // 检查 ROB 头部的指令是否能被提交
-        while self.rob[0].ready {
-            let rob_head = &self.rob[0];
-            let inst = rob_head.inner.inst.unwrap();
-            let rs_type: ResStationType = inst.into();
-            // 获取写回寄存器的编号
-            let dest = rob_head.inner.dest.unwrap();
-            match rs_type {
-                ResStationType::AddSub | ResStationType::MulDiv => {
-                    // 浮点数操作直接将计算的值写回到寄存器堆中
-                    self.regs[dest] = rob_head.inner.value.unwrap() as isize;
-                },
-                _ => {
-
+        if self.rob[0].busy == false {
+            self.done = true;
+        }else{
+            while self.rob[0].ready {
+                let rob_head = &self.rob[0];
+                let inst = rob_head.inner.inst.unwrap();
+                let rs_type: ResStationType = inst.into();
+                // 获取写回寄存器的编号
+                let dest = rob_head.inner.dest.unwrap();
+                match rs_type {
+                    ResStationType::AddSub | ResStationType::MulDiv => {
+                        // 浮点数操作直接将计算的值写回到寄存器堆中
+                        self.regs[dest] = rob_head.inner.value.unwrap() as isize;
+                        // println!("[Debug] commit: reg{}: {}", dest, rob_head.inner.value.unwrap() as isize);
+                    },
+                    _ => {
+    
+                    }
                 }
+                if self.reg_stat[dest].reorder == Some(rob_head as *const _ as usize) {
+                    self.reg_stat[dest].busy = false;
+                }
+                // 设置寄存器状态，将被占用的寄存器状态设置为空
+                let mut rob_head = self.rob.remove(0);
+                rob_head.busy = false;
+                self.rob.push(rob_head);
+                
             }
-            if self.reg_stat[dest].reorder == Some(rob_head as *const _ as usize) {
-                self.reg_stat[dest].busy = false;
-            }
-            drop(rob_head);
-            // 设置寄存器状态，将被占用的寄存器状态设置为空闲
-            let mut rob_head = self.rob.pop().unwrap();
-            rob_head.busy = false;
-            self.rob.push(rob_head);
         }
+        
     }
 
     /// 在一周期内所执行的操作
@@ -452,6 +448,7 @@ impl TomasuloCpu {
         self.write_result();
         // 进行指令提交
         self.commit();
+        // println!("[Debug] cycles: {}", self.cycles);
     }
 
 }
