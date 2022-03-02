@@ -1,5 +1,5 @@
 use std::env;
-use tomasulo_emulator::cpu::{ SingleCycleCpu, Cpu };
+use tomasulo_emulator::cpu::{ SingleCycleCpu, Cpu, TomasuloCpu };
 use tomasulo_emulator::parser::Parser;
 
 
@@ -12,5 +12,5 @@ fn main() {
     let parser = Parser::new();
     let mut cpu = SingleCycleCpu::new();
     parser.read_inst(&mut cpu, input_file).unwrap();
-    cpu.execute();
+    cpu.run();
 }
