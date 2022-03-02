@@ -5,7 +5,7 @@ pub use tomasulo::{ TomasuloCpu, ResStationType };
 
 /// CPU 的 Trait
 pub trait Cpu{
-    fn execute(&mut self);
+    fn run(&mut self);
     fn add_inst(&mut self, inst: Instruction);
 }
 

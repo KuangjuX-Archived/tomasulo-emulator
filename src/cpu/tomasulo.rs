@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, iter::Inspect};
+use std::{collections::VecDeque};
 use std::convert::From;
 use super::{ Instruction, Cpu };
 
@@ -76,7 +76,9 @@ pub struct RegisterStatus {
 pub struct ExecUint {
     busy: bool,
     rs_type: ResStationType,
-    cycles: usize
+    cycles: usize,
+    /// 保留站的索引
+    rs_index: usize
 }
 
 pub struct TomasuloCpu {
@@ -104,8 +106,12 @@ impl Cpu for TomasuloCpu {
         self.instruction_queue.push_back(inst);
     }
 
-    fn execute(&mut self) {
-        todo!()
+    fn run(&mut self) {
+        loop {
+            if !self.done(){ self.single_cycle(); }
+            else { break; }
+        }
+        println!("[Debug] Cpu run finished");
     }
 }
 
@@ -132,6 +138,10 @@ impl TomasuloCpu {
         cpu.add_exec_unit(ResStationType::MulDiv, 2);
         cpu.add_exec_unit(ResStationType::LoadBuffer, 2);
         cpu
+    }
+
+    pub fn done(&self) -> bool {
+        self.done
     }
 
     /// 添加保留站
@@ -175,7 +185,8 @@ impl TomasuloCpu {
             self.exec_units.push(ExecUint {
                 busy: false,
                 rs_type: rs_type,
-                cycles: 0
+                cycles: 0,
+                rs_index: 0
             });
         }
     }
@@ -310,12 +321,12 @@ impl TomasuloCpu {
                 },
                 ResStationType::LoadBuffer => {
                     match inst {
-                        Instruction::Ld(op) => {
+                        // Instruction::Ld(op) => {
 
-                        },
-                        Instruction::Sd(op) => {
+                        // },
+                        // Instruction::Sd(op) => {
 
-                        },
+                        // },
                         _ => {}
                     }
                 }
@@ -326,20 +337,21 @@ impl TomasuloCpu {
     /// 执行指令
     pub(crate) fn exec(&mut self) {
         // 遍历保留站检查有哪些写指令可以开始执行
-        for rs in self.rs.iter() {
-            if rs.inner.rs_index.is_none() && rs.inner.rt_index.is_none() {
-                let inst = rs.inner.inst.unwrap();
+        for rs_index in 0..self.rs.len() {
+            if self.rs[rs_index].inner.rs_index.is_none() && self.rs[rs_index].inner.rt_index.is_none() {
+                let inst = self.rs[rs_index].inner.inst.unwrap();
                 let rs_type: ResStationType = inst.into();
-                if let Some(index) = self.find_empty_exec_unit(rs_type) {
-                    self.exec_units[index].busy = true;
+                if let Some(exec_unit_index) = self.find_empty_exec_unit(rs_type) {
+                    self.exec_units[exec_unit_index].busy = true;
                     match inst {
-                        Instruction::Add(_) => { self.exec_units[index].cycles = ADD_CYCLES },
-                        Instruction::Sub(_) => { self.exec_units[index].cycles = SUB_CYCLES },
-                        Instruction::Mul(_) => { self.exec_units[index].cycles = MUL_CYCLES },
-                        Instruction::Div(_) => { self.exec_units[index].cycles = DIV_CYCLES },
+                        Instruction::Add(_) => { self.exec_units[exec_unit_index].cycles = ADD_CYCLES },
+                        Instruction::Sub(_) => { self.exec_units[exec_unit_index].cycles = SUB_CYCLES },
+                        Instruction::Mul(_) => { self.exec_units[exec_unit_index].cycles = MUL_CYCLES },
+                        Instruction::Div(_) => { self.exec_units[exec_unit_index].cycles = DIV_CYCLES },
                         _ => {}
                     }
-                    self.cycles -= 1;
+                    // 执行单元获取保留站的索引
+                    self.exec_units[exec_unit_index].rs_index = rs_index;
                 }else{
                     println!("[Debug] No ExecUnit to execute instruction");
                 }
@@ -349,7 +361,48 @@ impl TomasuloCpu {
 
     /// 将结果写到 CDB 总线并进行广播
     pub(crate) fn write_result(&mut self) {
+        for i in 0..self.exec_units.len() {
+            self.exec_units[i].cycles -= 1;
+            if self.exec_units[i].cycles == 0 {
+                // 当执行所需周期为 0 时，需要计算结果并将其送到 CDB 总线上
+                let rs_index = self.exec_units[i].rs_index;
+                let res_station = &mut self.rs[rs_index];
+                let inst = res_station.inner.inst.unwrap();
+                let mut res: usize = 0;
+                let mut rd: usize = 0;
+                match inst {
+                    Instruction::Add(op) => {
+                        res = res_station.inner.rs_value.unwrap() + res_station.inner.rt_value.unwrap();
+                        rd = op.target as usize;
+                    },
+                    _ => {
 
+                    }
+                }
+                // 获取到 reorder 的地址
+                let dest = self.reg_stat[rd].reorder.unwrap();
+                // 获取 rob 的索引
+                let rob_index = self.find_reorder(dest).unwrap();
+                // 将寄存器状态设为空闲，表示没有指令将会写入到
+                // 寄存器中
+                self.reg_stat[rd].busy = false;
+                // 将依赖于该寄存器的保留站的操作数写入
+                // 模拟的是 CDB 的广播
+                for rs_item in self.rs.iter_mut() {
+                    if rs_item.inner.rs_index == Some(dest) {
+                        rs_item.inner.rs_value = Some(res);
+                        rs_item.inner.rs_index = None;
+                    }
+                    if rs_item.inner.rt_index == Some(dest) {
+                        rs_item.inner.rt_value = Some(res);
+                        rs_item.inner.rt_index = None;
+                    }
+                }
+                // 将 ROB ready 设置为 true，表示可以进行提交了
+                self.rob[rob_index].ready = true;
+                self.rob[rob_index].inner.value = Some(res);
+            }
+        }
     }
 
     /// 提交指令
@@ -396,10 +449,4 @@ impl TomasuloCpu {
         self.commit();
     }
 
-    pub fn run(&mut self) {
-        loop {
-            if !self.done { self.single_cycle(); }
-            else{ break; }
-        }
-    }
 }

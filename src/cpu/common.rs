@@ -8,7 +8,7 @@ pub struct SingleCycleCpu {
 }
 
 impl Cpu for SingleCycleCpu {
-    fn execute(&mut self) {
+    fn run(&mut self) {
         println!("Start execute instructions!");
         loop {
             if let Some(inst) = self.instruction_queue.pop_front() {
