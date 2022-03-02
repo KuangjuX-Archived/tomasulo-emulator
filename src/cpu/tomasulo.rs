@@ -1,4 +1,4 @@
-use std::{collections::VecDeque};
+use std::collections::VecDeque;
 use std::convert::From;
 use super::{ Instruction, Cpu };
 
@@ -250,95 +250,98 @@ impl TomasuloCpu {
 
     /// 发射指令，每周期发射一条指令
     pub(crate) fn issue(&mut self) {
-        let inst = self.instruction_queue.pop_front().unwrap();
-        let rs_type: ResStationType = inst.into();
-        if let Some((rs, rob)) = self.can_issue(rs_type) {
-            match rs_type {
-                // 浮点数运算操作
-                ResStationType::AddSub | ResStationType::MulDiv => {
-                    match inst {
-                        Instruction::Add(op) | Instruction::Sub(op) | Instruction::Mul(op) | Instruction::Div(op) => {
-                            let r1 = op.operand1 as usize;
-                            let r2 = op.operand2 as usize;
-                            let rd = op.target as usize;
+        if let Some(inst) = self.instruction_queue.pop_front() {
+            let rs_type: ResStationType = inst.into();
+            if let Some((rs, rob)) = self.can_issue(rs_type) {
+                match rs_type {
+                    // 浮点数运算操作
+                    ResStationType::AddSub | ResStationType::MulDiv => {
+                        match inst {
+                            Instruction::Add(op) | Instruction::Sub(op) | Instruction::Mul(op) | Instruction::Div(op) => {
+                                let r1 = op.operand1 as usize;
+                                let r2 = op.operand2 as usize;
+                                let rd = op.target as usize;
 
-                            // 发射操作数
-                            let reg_stat = &self.reg_stat;
-                            // 如果操作数 1 的目前的状态是 busy 表示当前操作数不在寄存器中
-                            // 而将要被前面的指令写回或者在 ROB 中
-                            if reg_stat[r1].busy  {
-                                // 获取 reorder_addr 地址的值
-                                let reorder_addr = reg_stat[r1].reorder.unwrap();
-                                let reorder_index = self.find_reorder(reorder_addr).unwrap();
-                                let rs = &mut self.rs[rs];
-                                if self.rob[reorder_index].ready {
-                                    // 在 ROB 中已经将该寄存器的值计算完成，但仍然没有 commit
-                                    // 此时直接进行赋值即可
-                                    rs.inner.rs_value = Some(self.rob[reorder_index].inner.value.unwrap());
+                                // 发射操作数
+                                let reg_stat = &self.reg_stat;
+                                // 如果操作数 1 的目前的状态是 busy 表示当前操作数不在寄存器中
+                                // 而将要被前面的指令写回或者在 ROB 中
+                                if reg_stat[r1].busy  {
+                                    // 获取 reorder_addr 地址的值
+                                    let reorder_addr = reg_stat[r1].reorder.unwrap();
+                                    let reorder_index = self.find_reorder(reorder_addr).unwrap();
+                                    let rs = &mut self.rs[rs];
+                                    if self.rob[reorder_index].ready {
+                                        // 在 ROB 中已经将该寄存器的值计算完成，但仍然没有 commit
+                                        // 此时直接进行赋值即可
+                                        rs.inner.rs_value = Some(self.rob[reorder_index].inner.value.unwrap());
+                                        rs.inner.rs_index = None;
+                                    }else{
+                                        // 此时在 ROB 仍然没有计算完, 记录为 ROB 的序号
+                                        rs.inner.rs_index = Some(reorder_addr);
+                                    }
+                                }else{
+                                    let rs = &mut self.rs[rs];
+                                    // 目前操作数在寄存器堆中
+                                    rs.inner.rs_value = Some(reg_stat[r1].reorder).unwrap();
                                     rs.inner.rs_index = None;
-                                }else{
-                                    // 此时在 ROB 仍然没有计算完, 记录为 ROB 的序号
-                                    rs.inner.rs_index = Some(reorder_addr);
                                 }
-                            }else{
-                                let rs = &mut self.rs[rs];
-                                // 目前操作数在寄存器堆中
-                                rs.inner.rs_value = Some(reg_stat[r1].reorder).unwrap();
-                                rs.inner.rs_index = None;
-                            }
 
-                            // 如果操作数 2 的目前的状态是 busy 表示当前操作数不在寄存器中
-                            // 而将要被前面的指令写回或者在 ROB 中
-                            if reg_stat[r2].busy  {
-                                // 获取 reorder_addr 地址的值
-                                let reorder_addr = reg_stat[r2].reorder.unwrap();
-                                let reorder_index = self.find_reorder(reorder_addr).unwrap();
-                                let rs = &mut self.rs[rs];
-                                if self.rob[reorder_index].ready {
-                                    // 在 ROB 中已经将该寄存器的值计算完成，但仍然没有 commit
-                                    // 此时直接进行赋值即可
-                                    rs.inner.rt_value = Some(self.rob[reorder_index].inner.value.unwrap());
+                                // 如果操作数 2 的目前的状态是 busy 表示当前操作数不在寄存器中
+                                // 而将要被前面的指令写回或者在 ROB 中
+                                if reg_stat[r2].busy  {
+                                    // 获取 reorder_addr 地址的值
+                                    let reorder_addr = reg_stat[r2].reorder.unwrap();
+                                    let reorder_index = self.find_reorder(reorder_addr).unwrap();
+                                    let rs = &mut self.rs[rs];
+                                    if self.rob[reorder_index].ready {
+                                        // 在 ROB 中已经将该寄存器的值计算完成，但仍然没有 commit
+                                        // 此时直接进行赋值即可
+                                        rs.inner.rt_value = Some(self.rob[reorder_index].inner.value.unwrap());
+                                        rs.inner.rt_index = None;
+                                    }else{
+                                        // 此时在 ROB 仍然没有计算完, 记录为 ROB 的序号
+                                        rs.inner.rt_index = Some(reorder_addr);
+                                    }
+                                }else{
+                                    let rs = &mut self.rs[rs];
+                                    // 目前操作数在寄存器堆中
+                                    rs.inner.rt_value = Some(reg_stat[r2].reorder).unwrap();
                                     rs.inner.rt_index = None;
-                                }else{
-                                    // 此时在 ROB 仍然没有计算完, 记录为 ROB 的序号
-                                    rs.inner.rt_index = Some(reorder_addr);
                                 }
-                            }else{
-                                let rs = &mut self.rs[rs];
-                                // 目前操作数在寄存器堆中
-                                rs.inner.rt_value = Some(reg_stat[r2].reorder).unwrap();
-                                rs.inner.rt_index = None;
-                            }
 
-                            // 设置目标寄存器状态
-                            self.reg_stat[rd].reorder = Some(rob);
-                            self.reg_stat[rd].busy = true;
-                            self.rob[rob].inner.dest = Some(rd);
-                        },
+                                // 设置目标寄存器状态
+                                self.reg_stat[rd].reorder = Some(rob);
+                                self.reg_stat[rd].busy = true;
+                                self.rob[rob].inner.dest = Some(rd);
+                            },
 
-                        _ => {}
-                    }
-                },
-                ResStationType::LoadBuffer => {
-                    match inst {
-                        // Instruction::Ld(op) => {
+                            _ => {}
+                        }
+                    },
+                    ResStationType::LoadBuffer => {
+                        match inst {
+                            // Instruction::Ld(op) => {
 
-                        // },
-                        // Instruction::Sd(op) => {
+                            // },
+                            // Instruction::Sd(op) => {
 
-                        // },
-                        _ => {}
+                            // },
+                            _ => {}
+                        }
                     }
                 }
             }
-        }
+        }else{
+            self.done = true;
+        }      
     }
 
     /// 执行指令
     pub(crate) fn exec(&mut self) {
         // 遍历保留站检查有哪些写指令可以开始执行
         for rs_index in 0..self.rs.len() {
-            if self.rs[rs_index].inner.rs_index.is_none() && self.rs[rs_index].inner.rt_index.is_none() {
+            if self.rs[rs_index].inner.rs_index.is_none() && self.rs[rs_index].inner.rt_index.is_none() && self.rs[rs_index].busy {
                 let inst = self.rs[rs_index].inner.inst.unwrap();
                 let rs_type: ResStationType = inst.into();
                 if let Some(exec_unit_index) = self.find_empty_exec_unit(rs_type) {
@@ -362,8 +365,10 @@ impl TomasuloCpu {
     /// 将结果写到 CDB 总线并进行广播
     pub(crate) fn write_result(&mut self) {
         for i in 0..self.exec_units.len() {
-            self.exec_units[i].cycles -= 1;
-            if self.exec_units[i].cycles == 0 {
+            if self.exec_units[i].busy {
+                self.exec_units[i].cycles -= 1;
+            }
+            if self.exec_units[i].cycles == 0 && self.exec_units[i].busy {
                 // 当执行所需周期为 0 时，需要计算结果并将其送到 CDB 总线上
                 let rs_index = self.exec_units[i].rs_index;
                 let res_station = &mut self.rs[rs_index];
