@@ -305,7 +305,7 @@ impl TomasuloCpu {
         if let Some(inst) = self.instruction_queue.pop_front() {
             let rs_type: ResStationType = inst.into();
             if let Some((rs, rob)) = self.can_issue(rs_type) {
-                println!("[Debug] issue: rs: {}, rob: {}", rs, rob);
+                // println!("[Debug] issue: rs: {}, rob: {}", rs, rob);
                 match rs_type {
                     // 浮点数运算操作
                     ResStationType::AddSub | ResStationType::MulDiv => {
@@ -353,6 +353,9 @@ impl TomasuloCpu {
                         }
                     }
                 }
+            }else {
+                // 当目前没有足够的保留站时需要将其 push 到队列的顶部
+                self.instruction_queue.push_front(inst);
             }
         }   
     }
@@ -366,7 +369,7 @@ impl TomasuloCpu {
             // }
             if self.rs[rs_index].inner.rs_index.is_none() && self.rs[rs_index].inner.rt_index.is_none() && self.rs[rs_index].busy && !self.rs[rs_index].exec {
                 self.rs[rs_index].exec = true;
-                println!("[Debug] exec: rs_index: {}, cycles: {}", rs_index, self.cycles);
+                // println!("[Debug] exec: rs_index: {}, cycles: {}", rs_index, self.cycles);
                 let inst = self.rs[rs_index].inner.inst.unwrap();
                 let rs_type: ResStationType = inst.into();
                 if let Some(exec_unit_index) = self.find_empty_exec_unit(rs_type) {
@@ -412,13 +415,13 @@ impl TomasuloCpu {
 
                     Instruction::Mul(_) => {
                         res = res_station.inner.rs_value.unwrap() * res_station.inner.rt_value.unwrap();
-                        println!("[Debug] Mul res: {}", res);
+                        // println!("[Debug] Mul res: {}", res);
                         // rd = op.target as usize;
                     },
 
                     Instruction::Div(_) => {
                         res = res_station.inner.rs_value.unwrap() / res_station.inner.rt_value.unwrap();
-                        println!("[Debug] Div res: {}", res);
+                        // println!("[Debug] Div res: {}", res);
                         // rd = op.target as usize;
                     }
                     _ => {
@@ -458,11 +461,12 @@ impl TomasuloCpu {
     /// 提交指令
     pub(crate) fn commit(&mut self) {
         // 检查 ROB 头部的指令是否能被提交
-        if self.rob[0].busy == false {
+        if self.instruction_queue.len() == 0 && !self.rob[0].busy {
+            // self.debug_rob();
             self.done = true;
         }else{
             while self.rob[0].ready && self.rob[0].busy {
-                println!("[Debug] rob head: {:?}", self.rob[0]);
+                // println!("[Debug] rob head: {:?}", self.rob[0]);
                 let rob_head = &self.rob[0];
                 let inst = rob_head.inner.inst.unwrap();
                 let rs_type: ResStationType = inst.into();
@@ -472,7 +476,8 @@ impl TomasuloCpu {
                     ResStationType::AddSub | ResStationType::MulDiv => {
                         // 浮点数操作直接将计算的值写回到寄存器堆中
                         self.regs[dest] = rob_head.inner.value.unwrap() as isize;
-                        println!("[Debug] commit: reg{}: {}", dest, rob_head.inner.value.unwrap() as isize);
+                        // println!("[Debug] commit: reg{}: {}", dest, rob_head.inner.value.unwrap() as isize);
+                        println!("[Debug] reg1: {}, reg2: {}, reg3: {}", self.regs[1], self.regs[2], self.regs[3]);
                     },
                     _ => {
     
@@ -506,7 +511,6 @@ impl TomasuloCpu {
         self.write_result();
         // 进行指令提交
         self.commit();
-        // println!("[Debug] cycles: {}", self.cycles);
     }
 
 }
