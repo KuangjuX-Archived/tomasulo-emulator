@@ -1,7 +1,9 @@
 pub mod common;
 pub mod tomasulo;
+pub mod memory;
 pub use common::SingleCycleCpu;
 pub use tomasulo::{ TomasuloCpu, ResStationType };
+use memory::Memory;
 
 /// CPU 的 Trait
 pub trait Cpu{

@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::convert::From;
-use super::{ Instruction, Cpu };
+use super::{ Instruction, Cpu, Memory };
 
 use rand::prelude::*;
 
@@ -14,7 +14,8 @@ pub const DIV_CYCLES: usize = 12;
 pub enum ResStationType {
     AddSub,
     MulDiv,
-    LoadBuffer
+    LoadBuffer,
+    StoreBuffer
 }
 
 impl From<Instruction> for ResStationType {
@@ -115,6 +116,10 @@ pub struct ExecUint {
     rs_index: usize
 }
 
+pub struct LoadBuffer {
+    
+}
+
 pub struct TomasuloCpu {
     /// 是否完成
     done: bool,
@@ -131,7 +136,11 @@ pub struct TomasuloCpu {
     /// ROB
     rob: Vec<ReorderBuffer>,
     /// 执行单元
-    exec_units: Vec<ExecUint>
+    exec_units: Vec<ExecUint>,
+    /// load-store queue
+    ls_queue: VecDeque<Instruction>,
+    /// 内存
+    memory: Memory
 }
 
 
@@ -159,7 +168,9 @@ impl TomasuloCpu {
             instruction_queue: VecDeque::new(),
             rs: vec![],
             rob: vec![],
-            exec_units: vec![]
+            exec_units: vec![],
+            ls_queue: VecDeque::new(),
+            memory: Memory::init()
         };
         // 为 CPU 添加保留站
         cpu.add_rs(ResStationType::AddSub, 3);
@@ -305,7 +316,6 @@ impl TomasuloCpu {
         if let Some(inst) = self.instruction_queue.pop_front() {
             let rs_type: ResStationType = inst.into();
             if let Some((rs, rob)) = self.can_issue(rs_type) {
-                // println!("[Debug] issue: rs: {}, rob: {}", rs, rob);
                 match rs_type {
                     // 浮点数运算操作
                     ResStationType::AddSub | ResStationType::MulDiv => {
@@ -314,9 +324,6 @@ impl TomasuloCpu {
                                 let r1 = op.operand1 as usize;
                                 let r2 = op.operand2 as usize;
                                 let rd = op.target as usize;
-
-                                // println!("[Debug] inst: {:?}, rob: {}", inst, rob);
-
                                 // 发射操作数
                                 self.issue_op(r1, rs, 1);
                                 self.issue_op(r2, rs, 2);
@@ -343,13 +350,16 @@ impl TomasuloCpu {
                     },
                     ResStationType::LoadBuffer => {
                         match inst {
-                            // Instruction::Ld(op) => {
-
-                            // },
-                            // Instruction::Sd(op) => {
-
-                            // },
+                            
                             _ => {}
+                        }
+                    },
+
+                    ResStationType::StoreBuffer => {
+                        match inst {
+                            _ => {
+
+                            }
                         }
                     }
                 }

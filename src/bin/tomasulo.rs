@@ -12,5 +12,6 @@ fn main() {
     cpu.add_inst(Instruction::Add(Operand::new(3, 1, 2)));
     cpu.add_inst(Instruction::Mul(Operand::new(2, 1, 3)));
     cpu.add_inst(Instruction::Mul(Operand::new(2, 1, 3)));
+    cpu.add_inst(Instruction::Div(Operand::new(2, 3, 1)));
     cpu.run();
 }
