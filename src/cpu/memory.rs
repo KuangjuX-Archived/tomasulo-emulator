@@ -1,9 +1,11 @@
+use std::collections::HashMap;
 
-/// 1024 bytes * 4 = 4KB
-pub(crate) struct Memory ([i32; 1024]);
+/// 使用哈希表模拟内存
+/// key: memory address value: memory value
+pub(crate) struct Memory (HashMap<u32, i32>);
 
 impl Memory {
     pub(crate) fn init() -> Self {
-        Self([0i32; 1024])
+        Self(HashMap::new())
     }
 }

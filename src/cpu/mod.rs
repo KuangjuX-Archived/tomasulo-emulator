@@ -9,6 +9,7 @@ use memory::Memory;
 pub trait Cpu{
     fn run(&mut self);
     fn add_inst(&mut self, inst: Instruction);
+    fn trace<S>(&self, s: S) where S: Into<String>;
 }
 
 /// 操作数

@@ -1,5 +1,7 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, io::Write};
 use std::convert::From;
+use crate::trace::Trace;
+
 use super::{ Instruction, Cpu, Memory };
 
 use rand::prelude::*;
@@ -120,7 +122,7 @@ pub struct LoadBuffer {
     
 }
 
-pub struct TomasuloCpu {
+pub struct TomasuloCpu<'a> {
     /// 是否完成
     done: bool,
     /// 周期数
@@ -140,11 +142,13 @@ pub struct TomasuloCpu {
     /// load-store queue
     ls_queue: VecDeque<Instruction>,
     /// 内存
-    memory: Memory
+    memory: Memory,
+    /// 追踪文件
+    trace: &'a mut Trace
 }
 
 
-impl Cpu for TomasuloCpu {
+impl<'a> Cpu for TomasuloCpu<'a> {
     fn add_inst(&mut self, inst: Instruction) {
         self.instruction_queue.push_back(inst);
     }
@@ -156,10 +160,16 @@ impl Cpu for TomasuloCpu {
         }
         println!("[Debug] Cpu run finished, cycles: {}", self.cycles);
     }
+
+    fn trace<S>(&self, s: S) 
+    {
+        let s: String = s.into();
+        writeln!(self.trace.file, s);
+    }
 }
 
-impl TomasuloCpu {
-    pub fn new() -> Self {
+impl<'a> TomasuloCpu<'a> {
+    pub fn new(trace: &'a mut Trace) -> Self {
         let mut cpu = Self {
             done: false,
             cycles: 0,
@@ -170,7 +180,8 @@ impl TomasuloCpu {
             rob: vec![],
             exec_units: vec![],
             ls_queue: VecDeque::new(),
-            memory: Memory::init()
+            memory: Memory::init(),
+            trace: trace
         };
         // 为 CPU 添加保留站
         cpu.add_rs(ResStationType::AddSub, 3);
