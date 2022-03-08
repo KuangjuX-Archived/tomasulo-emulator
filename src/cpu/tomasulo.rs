@@ -334,7 +334,6 @@ impl TomasuloCpu {
                                 rs.inner.dest = Some(self.rob[rob].index);
                                 rs.busy = true;
                                 // 设置目标寄存器状态
-                                // println!("[Debug] rob addr: {:#x}", &self.rob[rob] as *const _ as usize);
                                 self.reg_stat[rd].reorder = Some(self.rob[rob].index);
                                 self.reg_stat[rd].busy = true;
                                 // 设置 ROB 的信息
