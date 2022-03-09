@@ -10,7 +10,5 @@ impl Trace {
         Self{
             file: File::open(filename.into()).unwrap()
         }
-    }
-
-    
+    } 
 }

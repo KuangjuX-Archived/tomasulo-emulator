@@ -1,13 +1,16 @@
 use std::collections::VecDeque;
+use crate::trace::Trace;
+
 use super::{ Instruction, Cpu };
 
 /// 单周期执行的 CPU
-pub struct SingleCycleCpu {
+pub struct SingleCycleCpu<'a> {
     pub(crate) regs: [isize;32],
-    pub(crate) instruction_queue: VecDeque<Instruction>
+    pub(crate) instruction_queue: VecDeque<Instruction>,
+    pub(crate) trace: &'a mut Trace
 }
 
-impl Cpu for SingleCycleCpu {
+impl<'a> Cpu for SingleCycleCpu<'a> {
     fn run(&mut self) {
         println!("Start execute instructions!");
         loop {
@@ -28,13 +31,18 @@ impl Cpu for SingleCycleCpu {
     fn add_inst(&mut self, inst: Instruction) {
         self.instruction_queue.push_back(inst);
     }
+
+    fn trace<S>(&mut self, s: S) {
+
+    }
 }
 
-impl SingleCycleCpu {
-    pub fn new() -> Self {
+impl<'a> SingleCycleCpu<'a> {
+    pub fn new(trace: &'a mut Trace) -> Self {
         Self{
             regs: [0isize;32],
-            instruction_queue: VecDeque::new()
+            instruction_queue: VecDeque::new(),
+            trace: trace
         }
     }
 }

@@ -1,5 +1,4 @@
 use std::{collections::VecDeque, io::Write};
-use std::convert::From;
 use crate::trace::Trace;
 
 use super::{ Instruction, Cpu, Memory };
@@ -161,10 +160,11 @@ impl<'a> Cpu for TomasuloCpu<'a> {
         println!("[Debug] Cpu run finished, cycles: {}", self.cycles);
     }
 
-    fn trace<S>(&self, s: S) 
+    fn trace<S>(&mut self, s: S) 
+        where S: Into<String>
     {
         let s: String = s.into();
-        writeln!(self.trace.file, s);
+        writeln!(self.trace.file, "{}", s).unwrap();
     }
 }
 
