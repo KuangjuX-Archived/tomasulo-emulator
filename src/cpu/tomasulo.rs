@@ -15,8 +15,8 @@ pub const DIV_CYCLES: usize = 12;
 pub enum ResStationType {
     AddSub,
     MulDiv,
-    LoadBuffer,
-    StoreBuffer
+    Load,
+    Store
 }
 
 impl From<Instruction> for ResStationType {
@@ -24,7 +24,7 @@ impl From<Instruction> for ResStationType {
         match item {
             Instruction::Add(_) | Instruction::Sub(_) => { ResStationType::AddSub },
             Instruction::Mul(_) | Instruction::Div(_) => { ResStationType::MulDiv },
-            Instruction::Ld(_) => { ResStationType::LoadBuffer },
+            Instruction::Ld(_, _) => { ResStationType::Load },
             _ => { panic!("[Error] Invalid instruction") }
         }
     }
@@ -46,8 +46,8 @@ pub struct ReservedStation {
 
 #[derive(Debug)]
 pub struct ResStationInner {
-    /// 内存地址，仅 store 和 load 使用
-    address: Option<usize>,
+    /// 内存地址，仅 load, store 使用
+    address: Option<u32>,
     /// 指令类型
     inst: Option<Instruction>,
     /// Qj
@@ -117,8 +117,9 @@ pub struct ExecUint {
     rs_index: usize
 }
 
-pub struct LoadBuffer {
-    
+pub struct LSBuffer {
+    rs: ReservedStation,
+    address: Option<usize>
 }
 
 pub struct TomasuloCpu<'a> {
@@ -138,8 +139,6 @@ pub struct TomasuloCpu<'a> {
     rob: Vec<ReorderBuffer>,
     /// 执行单元
     exec_units: Vec<ExecUint>,
-    /// load-store queue
-    ls_queue: VecDeque<Instruction>,
     /// 内存
     memory: Memory,
     /// 追踪文件
@@ -179,20 +178,19 @@ impl<'a> TomasuloCpu<'a> {
             rs: vec![],
             rob: vec![],
             exec_units: vec![],
-            ls_queue: VecDeque::new(),
             memory: Memory::init(),
             trace: trace
         };
         // 为 CPU 添加保留站
         cpu.add_rs(ResStationType::AddSub, 3);
         cpu.add_rs(ResStationType::MulDiv, 2);
-        cpu.add_rs(ResStationType::LoadBuffer, 2);
+        cpu.add_rs(ResStationType::Load, 2);
         // 为 CPU 添加 ROB
         cpu.add_rob(6);
         // 为 CPU 添加执行单元
         cpu.add_exec_unit(ResStationType::AddSub, 3);
         cpu.add_exec_unit(ResStationType::MulDiv, 2);
-        cpu.add_exec_unit(ResStationType::LoadBuffer, 2);
+        cpu.add_exec_unit(ResStationType::Load, 2);
         cpu
     }
 
@@ -308,6 +306,7 @@ impl<'a> TomasuloCpu<'a> {
     }
 
     /// 查看是否能发射
+    /// FP 操作需要看保留站是否有空闲, Load/Store 需要看 Buffer 是否有空闲
     fn can_issue(&self, rs_type: ResStationType) -> Option<(usize, usize)> {
         for i in 0..self.rs.len() {
             if !self.rs[i].busy && self.rs[i].rs_type == rs_type {
@@ -358,19 +357,20 @@ impl<'a> TomasuloCpu<'a> {
                             _ => {}
                         }
                     },
-                    ResStationType::LoadBuffer => {
+                    ResStationType::Load => {
                         match inst {
-                            
-                            _ => {}
+                            Instruction::Ld(rt, imm) => {
+                                self.rs[rs].inner.address = Some(imm);
+                                self.reg_stat[rt].reorder = Some(self.rob[rob].index);
+                                self.reg_stat[rt].busy = true;
+                                self.rob[rob].inner.dest = Some(rt);
+                            },
+                            _ => { panic!("Error instruction") }
                         }
                     },
 
-                    ResStationType::StoreBuffer => {
-                        match inst {
-                            _ => {
-
-                            }
-                        }
+                    ResStationType::Store => {
+                        
                     }
                 }
             }else {
@@ -384,12 +384,8 @@ impl<'a> TomasuloCpu<'a> {
     pub(crate) fn exec(&mut self) {
         // 遍历保留站检查有哪些写指令可以开始执行
         for rs_index in 0..self.rs.len() {
-            // if self.cycles == 2 {
-            //     println!("[Debug] rs: {:?}", self.rs[0]);
-            // }
             if self.rs[rs_index].inner.rs_index.is_none() && self.rs[rs_index].inner.rt_index.is_none() && self.rs[rs_index].busy && !self.rs[rs_index].exec {
                 self.rs[rs_index].exec = true;
-                // println!("[Debug] exec: rs_index: {}, cycles: {}", rs_index, self.cycles);
                 let inst = self.rs[rs_index].inner.inst.unwrap();
                 let rs_type: ResStationType = inst.into();
                 if let Some(exec_unit_index) = self.find_empty_exec_unit(rs_type) {
@@ -423,30 +419,11 @@ impl<'a> TomasuloCpu<'a> {
                 let mut res: usize = 0;
                 // let mut rd: usize = 0;
                 match inst {
-                    Instruction::Add(_) => {
-                        res = res_station.inner.rs_value.unwrap() + res_station.inner.rt_value.unwrap();
-                        // rd = op.target as usize;
-                    },
-
-                    Instruction::Sub(_) => {
-                        res = res_station.inner.rs_value.unwrap() - res_station.inner.rt_value.unwrap();
-                        // rd = op.target as usize;
-                    },
-
-                    Instruction::Mul(_) => {
-                        res = res_station.inner.rs_value.unwrap() * res_station.inner.rt_value.unwrap();
-                        // println!("[Debug] Mul res: {}", res);
-                        // rd = op.target as usize;
-                    },
-
-                    Instruction::Div(_) => {
-                        res = res_station.inner.rs_value.unwrap() / res_station.inner.rt_value.unwrap();
-                        // println!("[Debug] Div res: {}", res);
-                        // rd = op.target as usize;
-                    }
-                    _ => {
-                        panic!("[Error] invalid instruction");
-                    }
+                    Instruction::Add(_) => { res = res_station.inner.rs_value.unwrap() + res_station.inner.rt_value.unwrap(); },
+                    Instruction::Sub(_) => { res = res_station.inner.rs_value.unwrap() - res_station.inner.rt_value.unwrap(); },
+                    Instruction::Mul(_) => { res = res_station.inner.rs_value.unwrap() * res_station.inner.rt_value.unwrap(); },
+                    Instruction::Div(_) => { res = res_station.inner.rs_value.unwrap() / res_station.inner.rt_value.unwrap(); }
+                    _ => { panic!("[Error] invalid instruction"); }
                 }
                 
                 res_station.busy = false;
@@ -496,7 +473,6 @@ impl<'a> TomasuloCpu<'a> {
                     ResStationType::AddSub | ResStationType::MulDiv => {
                         // 浮点数操作直接将计算的值写回到寄存器堆中
                         self.regs[dest] = rob_head.inner.value.unwrap() as isize;
-                        // println!("[Debug] commit: reg{}: {}", dest, rob_head.inner.value.unwrap() as isize);
                         println!("[Debug] reg1: {}, reg2: {}, reg3: {}", self.regs[1], self.regs[2], self.regs[3]);
                     },
                     _ => {

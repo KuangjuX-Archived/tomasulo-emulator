@@ -36,7 +36,7 @@ pub enum Instruction{
     Sub(Operand),
     Mul(Operand),
     Div(Operand),
-    Ld(Operand),
+    Ld(usize, u32),
     Sd(Operand),
     Invalid
 }

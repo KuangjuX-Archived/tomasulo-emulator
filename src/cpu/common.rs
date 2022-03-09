@@ -17,7 +17,7 @@ impl<'a> Cpu for SingleCycleCpu<'a> {
         loop {
             if let Some(inst) = self.instruction_queue.pop_front() {
                 match inst {
-                    Instruction::Ld(operand) => { self.regs[operand.target as usize] = operand.operand1; },
+                    // Instruction::Ld(operand) => { self.regs[operand.target as usize] = operand.operand1; },
                     Instruction::Add(operand) => { self.regs[operand.target as usize] = self.regs[operand.operand1 as usize] + self.regs[operand.operand2 as usize]; },
                     Instruction::Sub(operand) => { self.regs[operand.target as usize] = self.regs[operand.operand1 as usize] - self.regs[operand.operand2 as usize]; },
                     Instruction::Mul(operand) => { self.regs[operand.target as usize] = self.regs[operand.operand1 as usize] * self.regs[operand.operand2 as usize]; },
