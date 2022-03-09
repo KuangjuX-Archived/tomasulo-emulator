@@ -1,7 +1,8 @@
-use tomasulo_emulator::cpu::{ TomasuloCpu, Cpu, Operand, Instruction };
+use tomasulo_emulator::{cpu::{ TomasuloCpu, Cpu, Operand, Instruction }, trace::Trace};
 
 fn main() {
-    let mut cpu = TomasuloCpu::new();
+    let mut trace = Trace::new("traces/tomasulo.txt");
+    let mut cpu = TomasuloCpu::new(&mut trace);
     cpu.set_regs(2, 100);
     cpu.set_regs(3, 200);
     cpu.set_regs(1, 2);

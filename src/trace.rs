@@ -5,10 +5,9 @@ pub struct Trace {
 
 impl Trace {
     pub fn new<S>(filename: S) -> Self
-        where S: Into<String> 
+        where S: Into<String> + Clone + Copy
     {
-        Self{
-            file: File::open(filename.into()).unwrap()
-        }
+        let file = File::create(filename.into()).unwrap();
+        Self{ file }
     } 
 }

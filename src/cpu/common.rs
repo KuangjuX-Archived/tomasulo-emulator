@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::io::Write;
 use crate::trace::Trace;
 
 use super::{ Instruction, Cpu };
@@ -24,6 +25,11 @@ impl<'a> Cpu for SingleCycleCpu<'a> {
                     _ => {}
                 }
             }else{ break; }
+            let mut info: String = String::new();
+            for (index, reg) in self.regs.iter().enumerate() {
+                info.push_str(format!("reg{}: {}; ", index, reg).as_str());
+            }
+            self.trace(info);
         }
         println!("Finish execute!");
     }
@@ -32,8 +38,11 @@ impl<'a> Cpu for SingleCycleCpu<'a> {
         self.instruction_queue.push_back(inst);
     }
 
-    fn trace<S>(&mut self, s: S) {
-
+    fn trace<S>(&mut self, s: S)
+        where S: Into<String> 
+    {
+        let s: String = s.into();
+        writeln!(self.trace.file, "{}", s).unwrap();
     }
 }
 
@@ -44,5 +53,9 @@ impl<'a> SingleCycleCpu<'a> {
             instruction_queue: VecDeque::new(),
             trace: trace
         }
+    }
+
+    pub fn set_regs(&mut self, index: usize, number: isize) {
+        self.regs[index] = number;
     }
 }
