@@ -17,26 +17,23 @@ impl Parser {
     {
         let inst : String = inst.into();
         match inst.chars().nth(0) {
-            Some('L') => {
-                let pattern = Regex::new(r"LD,R([0-9]*),0x([0-9a-fA-F]+)").unwrap();
-                let cap = pattern.captures(&inst).unwrap();
-                Instruction::Ld(
-                    Operand::new(
-                        isize::from_str_radix(&cap[1], 10).unwrap(), 
-                        isize::from_str_radix(&cap[2], 16).unwrap(), 
-                        0
-                    )
-                )
-            },
+            // Some('L') => {
+            //     let pattern = Regex::new(r"LD,R([0-9]*),0x([0-9a-fA-F]+)").unwrap();
+            //     let cap = pattern.captures(&inst).unwrap();
+            //     Instruction::Ld(
+            //         usize::from_str_radix(&cap[1], 10).unwrap(), 
+            //         u32::from_str_radix(&cap[2], 16).unwrap(), 
+            //     )
+            // },
 
             Some('A') => {
                 let pattern = Regex::new(r"ADD,R([0-9]*),R([0-9]*),R([0-9]*)").unwrap();
                 let cap = pattern.captures(&inst).unwrap();
                 Instruction::Add(
                     Operand::new(
-                        isize::from_str_radix(&cap[1], 10).unwrap(),
-                        isize::from_str_radix(&cap[2], 10).unwrap(), 
-                        isize::from_str_radix(&cap[3], 10).unwrap()
+                        usize::from_str_radix(&cap[1], 10).unwrap(),
+                        usize::from_str_radix(&cap[2], 10).unwrap(), 
+                        usize::from_str_radix(&cap[3], 10).unwrap()
                     )
                 )
             },
@@ -46,9 +43,9 @@ impl Parser {
                 let cap = pattern.captures(&inst).unwrap();
                 Instruction::Sub(
                     Operand::new(
-                        isize::from_str_radix(&cap[1], 10).unwrap(),
-                        isize::from_str_radix(&cap[2], 10).unwrap(), 
-                        isize::from_str_radix(&cap[3], 10).unwrap()
+                        usize::from_str_radix(&cap[1], 10).unwrap(),
+                        usize::from_str_radix(&cap[2], 10).unwrap(), 
+                        usize::from_str_radix(&cap[3], 10).unwrap()
                     )
                 )
             },
@@ -58,9 +55,9 @@ impl Parser {
                 let cap = pattern.captures(&inst).unwrap();
                 Instruction::Mul(
                     Operand::new(
-                        isize::from_str_radix(&cap[1], 10).unwrap(),
-                        isize::from_str_radix(&cap[2], 10).unwrap(), 
-                        isize::from_str_radix(&cap[3], 10).unwrap()
+                        usize::from_str_radix(&cap[1], 10).unwrap(),
+                        usize::from_str_radix(&cap[2], 10).unwrap(), 
+                        usize::from_str_radix(&cap[3], 10).unwrap()
                     )
                 )
             }
@@ -70,9 +67,9 @@ impl Parser {
                 let cap = pattern.captures(&inst).unwrap();
                 Instruction::Div(
                     Operand::new(
-                        isize::from_str_radix(&cap[1], 10).unwrap(),
-                        isize::from_str_radix(&cap[2], 10).unwrap(), 
-                        isize::from_str_radix(&cap[3], 10).unwrap()
+                        usize::from_str_radix(&cap[1], 10).unwrap(),
+                        usize::from_str_radix(&cap[2], 10).unwrap(), 
+                        usize::from_str_radix(&cap[3], 10).unwrap()
                     )
                 )
             }

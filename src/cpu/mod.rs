@@ -15,13 +15,13 @@ pub trait Cpu{
 /// 操作数
 #[derive(Debug, Clone, Copy)]
 pub struct Operand {
-    target: isize,
-    operand1: isize,
-    operand2: isize
+    target: usize,
+    operand1: usize,
+    operand2: usize
 }
 
 impl Operand {
-    pub fn new(target: isize, operand1: isize, operand2: isize) -> Self {
+    pub fn new(target: usize, operand1: usize, operand2: usize) -> Self {
         Self{
             target,
             operand1,
@@ -36,8 +36,8 @@ pub enum Instruction{
     Sub(Operand),
     Mul(Operand),
     Div(Operand),
-    Ld(usize, u32),
-    Sd(Operand),
+    Ld(usize, usize, u32),
+    Sd(usize, usize, u32),
     Invalid
 }
 
