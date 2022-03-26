@@ -53,6 +53,11 @@ impl<'a> Cpu for SingleCycleCpu<'a> {
         let s: String = s.into();
         writeln!(self.trace.file, "{}", s).unwrap();
     }
+
+    fn write_memory(&mut self, addr: u32, val: i32) {
+        self.memory.write(addr, val);
+    }
+
 }
 
 impl<'a> SingleCycleCpu<'a> {
@@ -68,4 +73,5 @@ impl<'a> SingleCycleCpu<'a> {
     pub fn set_regs(&mut self, index: usize, number: i32) {
         self.regs[index] = number;
     }
+
 }

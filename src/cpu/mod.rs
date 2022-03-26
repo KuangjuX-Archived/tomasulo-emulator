@@ -10,6 +10,7 @@ pub trait Cpu{
     fn run(&mut self);
     fn add_inst(&mut self, inst: Instruction);
     fn trace<S>(&mut self, s: S) where S: Into<String>;
+    fn write_memory(&mut self, addr: u32, val: i32);
 }
 
 /// 操作数

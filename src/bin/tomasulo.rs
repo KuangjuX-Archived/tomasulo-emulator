@@ -1,8 +1,18 @@
 use tomasulo_emulator::{cpu::{ TomasuloCpu, Cpu, Operand, Instruction }, trace::Trace};
-
+use tomasulo_emulator::parser::Parser;
+use rand::Rng;
 fn main() {
-    // fp_test();
-    load_test();
+    let mut trace = Trace::new("traces/tomasulo.txt");
+    let mut cpu = TomasuloCpu::new(&mut trace);
+    let mut rng = rand::thread_rng();
+    for i in 0..32 {
+        let rand_val = rng.gen_range(0..1000);
+        cpu.set_regs(i, rand_val);
+    }
+    let parser = Parser::new();
+    parser.read_inst(&mut cpu, "inst.txt").expect("Fail to read instruction");
+    parser.read_data(&mut cpu, "data.txt").expect("Fail to read data");
+    cpu.run();
 }
 
 fn fp_test() {

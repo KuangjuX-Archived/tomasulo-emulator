@@ -17,14 +17,15 @@ impl Parser {
     {
         let inst : String = inst.into();
         match inst.chars().nth(0) {
-            // Some('L') => {
-            //     let pattern = Regex::new(r"LD,R([0-9]*),0x([0-9a-fA-F]+)").unwrap();
-            //     let cap = pattern.captures(&inst).unwrap();
-            //     Instruction::Ld(
-            //         usize::from_str_radix(&cap[1], 10).unwrap(), 
-            //         u32::from_str_radix(&cap[2], 16).unwrap(), 
-            //     )
-            // },
+            Some('L') => {
+                let pattern = Regex::new(r"LD,R([0-9]*),R([0-9]*),([0-9]*)").unwrap();
+                let cap = pattern.captures(&inst).unwrap();
+                Instruction::Ld(
+                    usize::from_str_radix(&cap[1], 10).unwrap(), 
+                    usize::from_str_radix(&cap[2], 10).unwrap(),
+                    u32::from_str_radix(&cap[3], 10).unwrap(), 
+                )
+            },
 
             Some('A') => {
                 let pattern = Regex::new(r"ADD,R([0-9]*),R([0-9]*),R([0-9]*)").unwrap();
@@ -88,8 +89,23 @@ impl Parser {
         file.read_to_string(&mut insts).map_err(|err| { format!("err: {}", err) })?;
         for inst in insts.lines() {
             let inst = self.parse(inst);
-            println!("inst: {:?}", inst);
             cpu.add_inst(inst);
+        }
+        Ok(())
+    }
+
+    pub fn read_data<C, S>(&self, cpu: &mut C, filename: S) -> Result<(), String>
+        where C: Cpu, S: Into<String> 
+    {
+        let mut file = File::open(filename.into()).map_err( |err| { format!("err: {}", err) })?;
+        let mut datas: String = String::new();
+        file.read_to_string(&mut datas).map_err(|err| { format!("err: {}", err) })?;
+        for data in datas.lines() {
+            let pattern = Regex::new(r"([0-9]*): ([0-9]*)").unwrap();
+            let cap = pattern.captures(&data).unwrap();
+            let addr = u32::from_str_radix(&cap[1], 10).unwrap();
+            let val = i32::from_str_radix(&cap[2], 10).unwrap();
+            cpu.write_memory(addr, val);      
         }
         Ok(())
     }

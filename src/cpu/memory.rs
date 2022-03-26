@@ -10,9 +10,12 @@ impl Memory {
     }
 
     /// 从内存中读取数据
-    pub(crate) fn read(&self, addr: u32) -> i32 {
+    pub(crate) fn read(&self, mut addr: u32) -> i32 {
         // 地址必须是 4 字节对齐的
-        assert_eq!(addr % 4, 0);
+        // assert_eq!(addr % 4, 0);
+        if addr % 4 != 0 {
+            addr = (addr / 4) * 4;
+        }
         if let Some(val) = self.0.get(&addr) { *val }
         else{ 0 }
     }

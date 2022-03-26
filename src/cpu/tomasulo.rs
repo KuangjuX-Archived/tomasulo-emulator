@@ -160,6 +160,10 @@ impl<'a> Cpu for TomasuloCpu<'a> {
         let s: String = s.into();
         writeln!(self.trace.file, "{}", s).unwrap();
     }
+
+    fn write_memory(&mut self, addr: u32, val: i32) {
+        self.memory.write(addr, val);
+    }
 }
 
 impl<'a> TomasuloCpu<'a> {
@@ -197,15 +201,6 @@ impl<'a> TomasuloCpu<'a> {
         self.done
     }
 
-    // fn debug_rob(&self) {
-    //     for i in 0..self.rob.len() {
-    //         println!("index: {}, rob: {:?}", i, self.rob[i]);
-    //     }
-    // }
-
-    pub fn write_memory(&mut self, addr: u32, val: i32) {
-        self.memory.write(addr, val);
-    }
 
     /// 添加保留站
     fn add_rs(&mut self, rs_type: ResStationType, count: usize) {
@@ -474,7 +469,6 @@ impl<'a> TomasuloCpu<'a> {
                 self.exec_units[i].cycles -= 1;
             }
             if self.exec_units[i].cycles == 0 && self.exec_units[i].busy {
-                println!("[Debug] exec_unit[{}]: {:?}", i, self.exec_units[i]);
                 // 当执行所需周期为 0 时，需要计算结果并将其送到 CDB 总线上
                 let rs_index = self.exec_units[i].rs_index;
                 let res_station = &mut self.rs[rs_index];
@@ -486,7 +480,6 @@ impl<'a> TomasuloCpu<'a> {
                     Instruction::Mul(_) => { res = res_station.inner.rs_value.unwrap() * res_station.inner.rt_value.unwrap(); },
                     Instruction::Div(_) => { res = res_station.inner.rs_value.unwrap() / res_station.inner.rt_value.unwrap(); }
                     Instruction::Ld(_, _, _) => {
-                        println!("[Debug] exec load instruction");
                         // load 指令的两步直接在一步做了
                         let addr = (res_station.inner.address.unwrap() as i32 + res_station.inner.rs_value.unwrap()) as u32;
                         res_station.inner.address = Some(addr);
@@ -538,7 +531,6 @@ impl<'a> TomasuloCpu<'a> {
                     ResStationType::AddSub | ResStationType::MulDiv | ResStationType::LoadStore => {
                         // 浮点数操作直接将计算的值写回到寄存器堆中
                         self.regs[dest] = rob_head.inner.value.unwrap();
-                        println!("[Debug] reg1: {}, reg2: {}, reg3: {}", self.regs[1], self.regs[2], self.regs[3]);
                     },
                     _ => {
     
@@ -553,6 +545,11 @@ impl<'a> TomasuloCpu<'a> {
                 self.rob.remove(0);
                 // 重新 push 一个初始化的 ROB
                 self.rob.push(ReorderBuffer::init());
+                let mut info: String = String::new();
+                for (index, reg) in self.regs.iter().enumerate() {
+                    info.push_str(format!("reg{}: {}; ", index, reg).as_str());
+                }
+                self.trace(info);
                 
             }
         }
