@@ -39,6 +39,9 @@ pub enum Instruction{
     Div(Operand),
     Ld(usize, usize, u32),
     Sd(usize, usize, u32),
+    /// 这里的 Jump 并不做实际跳转，只是
+    /// 当做没有目标寄存器的指令
+    Jump(usize, usize),
     Invalid
 }
 

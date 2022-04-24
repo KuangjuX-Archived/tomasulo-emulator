@@ -10,6 +10,7 @@ pub const SUB_CYCLES: usize = 1;
 pub const MUL_CYCLES: usize = 6;
 pub const DIV_CYCLES: usize = 12;
 pub const LOAD_CYCLES: usize = 2;
+pub const JUMP_CYCLES: usize = 1;
 
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
@@ -17,6 +18,7 @@ pub enum ResStationType {
     AddSub,
     MulDiv,
     LoadStore,
+    JUMP
 }
 
 impl From<Instruction> for ResStationType {
@@ -25,6 +27,7 @@ impl From<Instruction> for ResStationType {
             Instruction::Add(_) | Instruction::Sub(_) => { ResStationType::AddSub },
             Instruction::Mul(_) | Instruction::Div(_) => { ResStationType::MulDiv },
             Instruction::Ld(_, _, _) | Instruction::Sd(_, _, _) => { ResStationType::LoadStore },
+            Instruction::Jump(_, _) => { ResStationType::JUMP },
             _ => { panic!("[Error] Invalid instruction") }
         }
     }
@@ -184,12 +187,14 @@ impl<'a> TomasuloCpu<'a> {
         cpu.add_rs(ResStationType::AddSub, 3);
         cpu.add_rs(ResStationType::MulDiv, 2);
         cpu.add_rs(ResStationType::LoadStore, 6);
+        cpu.add_rs(ResStationType::JUMP, 3);
         // 为 CPU 添加 ROB
         cpu.add_rob(6);
         // 为 CPU 添加执行单元
         cpu.add_exec_unit(ResStationType::AddSub, 3);
         cpu.add_exec_unit(ResStationType::MulDiv, 2);
         cpu.add_exec_unit(ResStationType::LoadStore, 3);
+        cpu.add_exec_unit(ResStationType::JUMP, 3);
         cpu
     }
 
@@ -335,6 +340,7 @@ impl<'a> TomasuloCpu<'a> {
 
     /// 发射指令，每周期发射一条指令
     pub(crate) fn issue(&mut self) {
+        // println!("[Debug] Issue");
         if let Some(inst) = self.instruction_queue.pop_front() {
             let rs_type: ResStationType = inst.into();
             if let Some((rs, rob)) = self.can_issue(rs_type) {
@@ -401,6 +407,26 @@ impl<'a> TomasuloCpu<'a> {
                             }
                         }
                     },
+
+                    ResStationType::JUMP => {
+                        if let Instruction::Jump(r1, r2) = inst {
+                            // println!("[Debug] issue: Jump");
+                             // 发射操作数
+                             self.issue_op(r1, rs, 1);
+                             self.issue_op(r2, rs, 2);
+                             
+                             let rs = &mut self.rs[rs];
+                             rs.inner.inst = Some(inst);
+                             // 设置 ROB 地址
+                             rs.inner.dest = Some(self.rob[rob].index);
+                             rs.busy = true;
+                             // 由于没有目标寄存器，因此不需要设置目标寄存器状态
+                             // 设置 ROB 的信息
+                             self.rob[rob].busy = true;
+                             self.rob[rob].ready = false;
+                             self.rob[rob].inner.inst = Some(inst);
+                        } 
+                    }
                 }
             }else {
                 // 当目前没有足够的保留站时需要将其 push 到队列的顶部
@@ -458,6 +484,21 @@ impl<'a> TomasuloCpu<'a> {
                         }
                     }
                 }
+
+                ResStationType::JUMP => {
+                    if self.rs[rs_index].inner.rs_index.is_none() && self.rs[rs_index].inner.rt_index.is_none() && self.rs[rs_index].busy && !self.rs[rs_index].exec {
+                        self.rs[rs_index].exec = true;
+                        let inst = self.rs[rs_index].inner.inst.unwrap();
+                        let rs_type: ResStationType = inst.into();
+                        if let Some(exec_unit_index) = self.find_empty_exec_unit(rs_type) {
+                            self.exec_units[exec_unit_index].busy = true;
+                            // 执行阶段什么都不做，独占一个周期
+                            self.exec_units[exec_unit_index].cycles = JUMP_CYCLES;
+                            // 执行单元获取保留站的索引
+                            self.exec_units[exec_unit_index].rs_index = rs_index;
+                        }
+                    }
+                }
             }
         }
     }
@@ -484,6 +525,10 @@ impl<'a> TomasuloCpu<'a> {
                         let addr = (res_station.inner.address.unwrap() as i32 + res_station.inner.rs_value.unwrap()) as u32;
                         res_station.inner.address = Some(addr);
                         res = self.memory.read(addr);
+                    },
+                    Instruction::Jump(_, _) => {
+                        // 什么都不做
+                        // println!("[Debug] Jump Instruction");
                     }
                     _ => { panic!("[Error] invalid instruction"); }
                 }
@@ -526,20 +571,19 @@ impl<'a> TomasuloCpu<'a> {
                 let inst = rob_head.inner.inst.unwrap();
                 let rs_type: ResStationType = inst.into();
                 // 获取写回寄存器的编号
-                let dest = rob_head.inner.dest.unwrap();
-                match rs_type {
-                    ResStationType::AddSub | ResStationType::MulDiv | ResStationType::LoadStore => {
-                        // 浮点数操作直接将计算的值写回到寄存器堆中
-                        self.regs[dest] = rob_head.inner.value.unwrap();
-                    },
-                    _ => {
-    
+                if let Some(dest) = rob_head.inner.dest {
+                    match rs_type {
+                        ResStationType::AddSub | ResStationType::MulDiv | ResStationType::LoadStore => {
+                            // 浮点数操作直接将计算的值写回到寄存器堆中
+                            self.regs[dest] = rob_head.inner.value.unwrap();
+                        },
+                        _ => {}
                     }
-                }
-                // 将寄存器状态由 busy 修改为 free
-                if self.reg_stat[dest].reorder == Some(rob_head.index) && self.reg_stat[dest].busy {
-                    self.reg_stat[dest].busy = false;
-                    self.reg_stat[dest].reorder = None;
+                    // 将寄存器状态由 busy 修改为 free
+                    if self.reg_stat[dest].reorder == Some(rob_head.index) && self.reg_stat[dest].busy {
+                        self.reg_stat[dest].busy = false;
+                        self.reg_stat[dest].reorder = None;
+                    }
                 }
                 // 将 ROB 从 reorder 队列中 pop 出来
                 self.rob.remove(0);
