@@ -151,8 +151,7 @@ impl<'a> Cpu for TomasuloCpu<'a> {
 
     fn run(&mut self) {
         loop {
-            // if !self.done(){ self.single_cycle(); }
-            if !self.done(){ self.mult_issue(4); }
+            if !self.done(){ self.mult_issue(8); }
             else { break; }
         }
         println!("[Debug] Cpu run finished, cycles: {}", self.cycles);
@@ -187,7 +186,7 @@ impl<'a> TomasuloCpu<'a> {
         // 为 CPU 添加保留站
         cpu.add_rs(ResStationType::AddSub, 3);
         cpu.add_rs(ResStationType::MulDiv, 2);
-        cpu.add_rs(ResStationType::LoadStore, 6);
+        cpu.add_rs(ResStationType::LoadStore, 3);
         cpu.add_rs(ResStationType::JUMP, 3);
         // 为 CPU 添加 ROB
         cpu.add_rob(6);
@@ -340,7 +339,6 @@ impl<'a> TomasuloCpu<'a> {
 
     /// 发射指令，每周期发射一条指令
     pub(crate) fn issue(&mut self) {
-        // println!("[Debug] Issue");
         if let Some(inst) = self.instruction_queue.pop_front() {
             let rs_type: ResStationType = inst.into();
             if let Some((rs, rob)) = self.can_issue(rs_type) {
@@ -369,7 +367,6 @@ impl<'a> TomasuloCpu<'a> {
                                 self.rob[rob].busy = true;
                                 self.rob[rob].ready = false;
                                 self.rob[rob].inner.inst = Some(inst);
-
                             },
 
                             _ => {}
@@ -410,7 +407,6 @@ impl<'a> TomasuloCpu<'a> {
 
                     ResStationType::JUMP => {
                         if let Instruction::Jump(r1, r2) = inst {
-                            // println!("[Debug] issue: Jump");
                              // 发射操作数
                              self.issue_op(r1, rs, 1);
                              self.issue_op(r2, rs, 2);
@@ -601,24 +597,24 @@ impl<'a> TomasuloCpu<'a> {
 
     /// 在一周期内所执行的操作
     /// 包括发射、执行、写结果、提交
-    pub(crate) fn single_cycle(&mut self) {
-        // 将结果写到 CDB 总线并进行广播
-        self.write_result();
-        // 进行指令提交
-        self.commit();
-        // 将周期添加 1
-        self.cycles += 1;
-        // 进行指令发射
-        self.issue();
-        // 检查保留站开始执行指令
-        self.exec();
-    }
+    // pub(crate) fn single_cycle(&mut self) {
+    //     // 将结果写到 CDB 总线并进行广播
+    //     self.write_result();
+    //     // 进行指令提交
+    //     self.commit();
+    //     // 将周期添加 1
+    //     self.cycles += 1;
+    //     // 进行指令发射
+    //     self.issue();
+    //     // 检查保留站开始执行指令
+    //     self.exec();
+    // }
 
     pub(crate) fn mult_issue(&mut self, issue_nums: usize) {
-        // 将结果写到 CDB 总线并进行广播
-        self.write_result();
-        // 进行指令提交
-        self.commit();
+         // 将结果写到 CDB 总线并进行广播
+         self.write_result();
+         // 进行指令提交
+         self.commit();
         // 将周期添加 1
         self.cycles += 1;
         // 进行多次指令发射

@@ -8,7 +8,7 @@ fn main() {
     let mut data_file = File::create("data.txt").unwrap();
 
     let inst_type = vec!["ADD", "SUB", "MUL", "DIV", "LD", "JUMP"];
-    for _ in 0..1000 {
+    for _ in 0..5000 {
         let idx = rng.gen_range(0..5);
         match inst_type[idx] {
             "ADD" | "SUB" | "MUL" | "DIV" => {
