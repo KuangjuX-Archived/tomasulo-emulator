@@ -5,10 +5,10 @@ use super::{ Instruction, Cpu, Memory };
 
 use rand::prelude::*;
 
-pub const ADD_CYCLES: usize = 1;
-pub const SUB_CYCLES: usize = 1;
-pub const MUL_CYCLES: usize = 6;
-pub const DIV_CYCLES: usize = 12;
+pub const ADD_CYCLES: usize = 2;
+pub const SUB_CYCLES: usize = 2;
+pub const MUL_CYCLES: usize = 12;
+pub const DIV_CYCLES: usize = 24;
 pub const LOAD_CYCLES: usize = 2;
 pub const JUMP_CYCLES: usize = 1;
 
@@ -516,10 +516,10 @@ impl<'a> TomasuloCpu<'a> {
                 let inst = res_station.inner.inst.unwrap();
                 let mut res: i32 = 0;
                 match inst {
-                    Instruction::Add(_) => { res = res_station.inner.rs_value.unwrap() + res_station.inner.rt_value.unwrap(); },
-                    Instruction::Sub(_) => { res = res_station.inner.rs_value.unwrap() - res_station.inner.rt_value.unwrap(); },
-                    Instruction::Mul(_) => { res = res_station.inner.rs_value.unwrap() * res_station.inner.rt_value.unwrap(); },
-                    Instruction::Div(_) => { res = res_station.inner.rs_value.unwrap() / res_station.inner.rt_value.unwrap(); }
+                    Instruction::Add(_) => { res = if let Some(add_res) = res_station.inner.rs_value.unwrap().checked_add(res_station.inner.rt_value.unwrap()){ add_res }else{ 0 } },
+                    Instruction::Sub(_) => { res = if let Some(sub_res) = res_station.inner.rs_value.unwrap().checked_sub(res_station.inner.rt_value.unwrap()){ sub_res }else{ 0 } },
+                    Instruction::Mul(_) => { res = if let Some(mul_res) = res_station.inner.rs_value.unwrap().checked_mul(res_station.inner.rt_value.unwrap()){ mul_res }else{ 0 } },
+                    Instruction::Div(_) => { res = if let Some(div_res) = res_station.inner.rs_value.unwrap().checked_div(res_station.inner.rt_value.unwrap()){ div_res }else { 0 } }
                     Instruction::Ld(_, _, _) => {
                         // load 指令的两步直接在一步做了
                         let addr = (res_station.inner.address.unwrap() as i32 + res_station.inner.rs_value.unwrap()) as u32;
@@ -528,7 +528,6 @@ impl<'a> TomasuloCpu<'a> {
                     },
                     Instruction::Jump(_, _) => {
                         // 什么都不做
-                        // println!("[Debug] Jump Instruction");
                     }
                     _ => { panic!("[Error] invalid instruction"); }
                 }
@@ -603,16 +602,16 @@ impl<'a> TomasuloCpu<'a> {
     /// 在一周期内所执行的操作
     /// 包括发射、执行、写结果、提交
     pub(crate) fn single_cycle(&mut self) {
+        // 将结果写到 CDB 总线并进行广播
+        self.write_result();
+        // 进行指令提交
+        self.commit();
         // 将周期添加 1
         self.cycles += 1;
         // 进行指令发射
         self.issue();
         // 检查保留站开始执行指令
         self.exec();
-        // 将结果写到 CDB 总线并进行广播
-        self.write_result();
-        // 进行指令提交
-        self.commit();
     }
 
 }
