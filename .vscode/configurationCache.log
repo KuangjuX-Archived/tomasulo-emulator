@@ -1,0 +1,1 @@
+{"buildTargets":["clean","gen","single_cycle","tomasulo"],"launchTargets":[],"customConfigurationProvider":{"workspaceBrowse":{"browsePath":[],"compilerArgs":[]},"fileIndex":[]}}

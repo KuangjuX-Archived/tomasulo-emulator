@@ -151,7 +151,8 @@ impl<'a> Cpu for TomasuloCpu<'a> {
 
     fn run(&mut self) {
         loop {
-            if !self.done(){ self.single_cycle(); }
+            // if !self.done(){ self.single_cycle(); }
+            if !self.done(){ self.mult_issue(4); }
             else { break; }
         }
         println!("[Debug] Cpu run finished, cycles: {}", self.cycles);
@@ -314,7 +315,6 @@ impl<'a> TomasuloCpu<'a> {
                         return Some((i, j))
                     }
                 }
-                return None
             }
         }
         None
@@ -610,6 +610,21 @@ impl<'a> TomasuloCpu<'a> {
         self.cycles += 1;
         // 进行指令发射
         self.issue();
+        // 检查保留站开始执行指令
+        self.exec();
+    }
+
+    pub(crate) fn mult_issue(&mut self, issue_nums: usize) {
+        // 将结果写到 CDB 总线并进行广播
+        self.write_result();
+        // 进行指令提交
+        self.commit();
+        // 将周期添加 1
+        self.cycles += 1;
+        // 进行多次指令发射
+        for _ in 0..issue_nums {
+            self.issue();
+        }
         // 检查保留站开始执行指令
         self.exec();
     }

@@ -73,6 +73,22 @@ impl Parser {
                         usize::from_str_radix(&cap[3], 10).unwrap()
                     )
                 )
+            },
+
+            Some('J') => {
+                let pattern = Regex::new(r"JUMP,R([0-9]*),R([0-9]*)").unwrap();
+                let cap = pattern.captures(&inst).unwrap();
+                // Instruction::Div(
+                //     Operand::new(
+                //         usize::from_str_radix(&cap[1], 10).unwrap(),
+                //         usize::from_str_radix(&cap[2], 10).unwrap(), 
+                //         usize::from_str_radix(&cap[3], 10).unwrap()
+                //     )
+                // )
+                Instruction::Jump(
+                    usize::from_str_radix(&cap[1], 10).unwrap(),
+                    usize::from_str_radix(&cap[2], 10).unwrap()
+                )
             }
 
             _ => {

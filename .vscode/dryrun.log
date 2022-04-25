@@ -1,0 +1,5 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/home/kuangjux/lab/tomasulo-emulator'
+cargo run --bin single_cycle
+make: Leaving directory '/home/kuangjux/lab/tomasulo-emulator'
+ 
